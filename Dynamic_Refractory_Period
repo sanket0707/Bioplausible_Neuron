@@ -1,0 +1,34 @@
+Initialize:
+    T_base := base refractory period
+    T := time window for counting spikes
+    N := array of zeros (size equals number of neurons)
+    lastSpikeTime := array of negative infinity values (size equals number of neurons)
+    
+    FUNCTION f(spikeCount):
+        // Define how the refractory period changes with spike count
+        RETURN some function of spikeCount  // e.g., linear: a*spikeCount + b
+
+Process DVS Events:
+    FOR each DVS event at time t:
+        neuron_i = corresponding neuron for the DVS event
+        
+        IF t - lastSpikeTime[neuron_i] > T_ref[neuron_i]:  // If outside refractory period
+            Trigger spike for neuron_i
+            N[neuron_i] += 1
+            lastSpikeTime[neuron_i] = t
+            T_ref[neuron_i] = T_base + f(N[neuron_i])
+
+Update Neurons:
+    FOR each time step dt:
+        FOR each neuron_i:
+            IF current time - lastSpikeTime[neuron_i] > T:
+                N[neuron_i] -= 1  // Decrease spike count outside of the time window
+                T_ref[neuron_i] = T_base + f(N[neuron_i])  // Recalculate refractory period
+
+            Update membrane potential for neuron_i based on LIF dynamics
+            IF membrane potential > threshold AND current time - lastSpikeTime[neuron_i] > T_ref[neuron_i]:
+                Fire spike for neuron_i
+                Reset membrane potential
+                lastSpikeTime[neuron_i] = current time
+                N[neuron_i] += 1
+                T_ref[neuron_i] = T_base + f(N[neuron_i])
