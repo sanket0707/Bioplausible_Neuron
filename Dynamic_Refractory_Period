@@ -1,34 +1,53 @@
-Initialize:
-    T_base := base refractory period
-    T := time window for counting spikes
-    N := array of zeros (size equals number of neurons)
-    lastSpikeTime := array of negative infinity values (size equals number of neurons)
-    
-    FUNCTION f(spikeCount):
-        // Define how the refractory period changes with spike count
-        RETURN some function of spikeCount  // e.g., linear: a*spikeCount + b
+import numpy as np
 
-Process DVS Events:
-    FOR each DVS event at time t:
-        neuron_i = corresponding neuron for the DVS event
-        
-        IF t - lastSpikeTime[neuron_i] > T_ref[neuron_i]:  // If outside refractory period
-            Trigger spike for neuron_i
-            N[neuron_i] += 1
-            lastSpikeTime[neuron_i] = t
-            T_ref[neuron_i] = T_base + f(N[neuron_i])
+class NeuronModel:
+    def __init__(self, num_neurons, T_base, T_window, threshold):
+        self.T_base = T_base
+        self.T_window = T_window
+        self.threshold = threshold
+        self.num_neurons = num_neurons
 
-Update Neurons:
-    FOR each time step dt:
-        FOR each neuron_i:
-            IF current time - lastSpikeTime[neuron_i] > T:
-                N[neuron_i] -= 1  // Decrease spike count outside of the time window
-                T_ref[neuron_i] = T_base + f(N[neuron_i])  // Recalculate refractory period
+        self.N = np.zeros(num_neurons, dtype=int)
+        self.lastSpikeTime = np.full(num_neurons, -np.inf)
+        self.T_ref = np.full(num_neurons, T_base)
+        self.membrane_potential = np.zeros(num_neurons)
 
-            Update membrane potential for neuron_i based on LIF dynamics
-            IF membrane potential > threshold AND current time - lastSpikeTime[neuron_i] > T_ref[neuron_i]:
-                Fire spike for neuron_i
-                Reset membrane potential
-                lastSpikeTime[neuron_i] = current time
-                N[neuron_i] += 1
-                T_ref[neuron_i] = T_base + f(N[neuron_i])
+    def f(self, spikeCount):
+        # Define how the refractory period changes with spike count
+        # This is just an example function. You can modify as per your needs.
+        a, b = 0.1, 0.5
+        return a * spikeCount + b
+
+    def process_DVS_event(self, t, neuron_i):
+        if t - self.lastSpikeTime[neuron_i] > self.T_ref[neuron_i]:
+            self.trigger_spike(neuron_i, t)
+
+    def trigger_spike(self, neuron_i, t):
+        self.N[neuron_i] += 1
+        self.lastSpikeTime[neuron_i] = t
+        self.T_ref[neuron_i] = self.T_base + self.f(self.N[neuron_i])
+        self.membrane_potential[neuron_i] = 0  # Reset membrane potential after spike
+
+    def update_neurons(self, current_time, dt):
+        for neuron_i in range(self.num_neurons):
+            if current_time - self.lastSpikeTime[neuron_i] > self.T_window:
+                self.N[neuron_i] -= 1
+                self.T_ref[neuron_i] = self.T_base + self.f(self.N[neuron_i])
+
+            # LIF dynamics (simplified for demonstration)
+            # You can replace this with the actual LIF update rule
+            self.membrane_potential[neuron_i] += dt
+
+            if (self.membrane_potential[neuron_i] > self.threshold and 
+                current_time - self.lastSpikeTime[neuron_i] > self.T_ref[neuron_i]):
+                self.trigger_spike(neuron_i, current_time)
+
+
+# Usage
+model = NeuronModel(num_neurons=100, T_base=0.5, T_window=1.0, threshold=1.0)
+
+# Simulating some time steps
+for t in np.arange(0, 10, 0.1):
+    # Example: At each time step, stimulate neuron 5
+    model.process_DVS_event(t, 5)
+    model.update_neurons(t, 0.1)
