@@ -1,0 +1,54 @@
+
+# Initialization
+num_neurons = 128*128  # Example for a 128x128 DVS camera
+upper_limit = 0.8
+lower_limit = 0.2
+threshold_adjustment = 0.05
+
+
+class Neuron:
+    def __init__(self, initial_threshold):
+        self.threshold = initial_threshold
+        self.C_in = 0
+        self.C_out = 0
+
+    def process_event(self, event):
+        self.C_in += 1
+        if self.check_fire(event):
+            self.C_out += 1
+
+    def check_fire(self, event):
+        # Check if the neuron should fire based on the event and the current threshold
+        # This is a simplified representation; you would typically compare the
+        # membrane potential against the threshold, etc.
+        if event > self.threshold:
+            return True
+        return False
+
+    def adjust_threshold(self, upper_limit=0.8, lower_limit=0.2, threshold_adjustment=0.05):
+        ratio = self.C_out / self.C_in if self.C_in != 0 else 0
+        if ratio > upper_limit:
+            self.threshold += threshold_adjustment
+        elif ratio < lower_limit:
+            self.threshold -= threshold_adjustment
+
+    def reset_counters(self):
+        self.C_in = 0
+        self.C_out = 0
+
+
+# Example usage:
+
+neurons = [Neuron(initial_threshold=0.5) for _ in range(NUM_NEURONS)]
+
+for event in dvs_events:
+    neuron_i = get_corresponding_neuron(event)
+    neuron = neurons[neuron_i]
+    neuron.process_event(event)
+    neuron.adjust_threshold()
+
+    # Periodically reset counters if desired
+    if event.time % RESET_INTERVAL == 0:
+        for neuron in neurons:
+            neuron.reset_counters()
+
